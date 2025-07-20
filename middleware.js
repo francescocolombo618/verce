@@ -41,10 +41,7 @@ export async function middleware(req) {
     }
   }
 
-  if (!jsCookie || jsCookie.value !== '1') {
-    await logEvent(ip, 'No JavaScript Detected', ua);
-    return NextResponse.redirect('https://example.com/no-js.html');
-  }
+
 
   try {
     const geoRes = await fetch(`${GEO_API}/${ip}/json/`);

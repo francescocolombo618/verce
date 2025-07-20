@@ -1,8 +1,8 @@
 'use client';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function Home() {
+function Redirect() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -13,5 +13,13 @@ export default function Home() {
     window.location.href = target;
   }, [searchParams]);
 
-  return <p>Redirecting to destination...</p>;
+  return <p>Redirecting...</p>;
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Redirect />
+    </Suspense>
+  );
 }

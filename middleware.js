@@ -1,6 +1,7 @@
 // middleware.js
 import { NextResponse } from 'next/server';
 import { suspiciousAgents } from './utils/suspiciousAgents';
+import { blockedIps } from './utils/blockedIps';
 
 export const config = {
   matcher: '/', // or '*' to apply to all routes
@@ -11,8 +12,8 @@ const CAPTCHA_COOKIE = 'captcha_verified';
 const JS_COOKIE = 'js_enabled';
 const GEO_API = 'https://ipapi.co';
 const ALLOWED_COUNTRIES = ['AU', 'NG'];
-const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW = 60;
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW = 3;
 const BLOCK_LOG_URL = 'https://your-logging-endpoint.com/log';
 
 async function logEvent(ip, reason, ua) {
@@ -34,6 +35,13 @@ export async function middleware(req) {
   const rlCookie = req.cookies.get(RATE_LIMIT_COOKIE);
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '';
 
+  // 🔒 Block IPs from list
+  if (blockedIps.includes(ip)) {
+    await logEvent(ip, 'Blocked by IP', ua);
+    return NextResponse.redirect('https://example.com/ip-blocked.html');
+  }
+
+  // 👮 Block suspicious User-Agent
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
@@ -41,6 +49,7 @@ export async function middleware(req) {
     }
   }
 
+  // 🌍 GeoIP Filtering
   try {
     const geoRes = await fetch(`${GEO_API}/${ip}/json/`);
     if (geoRes.ok) {
@@ -52,6 +61,7 @@ export async function middleware(req) {
     }
   } catch (err) {}
 
+  // ⏱️ Rate Limit Logic
   const count = rlCookie ? parseInt(rlCookie.value) : 0;
   if (count >= RATE_LIMIT_MAX) {
     await logEvent(ip, 'Rate Limit Exceeded', ua);

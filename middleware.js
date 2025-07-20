@@ -38,14 +38,14 @@ export async function middleware(req) {
   // 🔒 Block IPs from list
   if (blockedIps.includes(ip)) {
     await logEvent(ip, 'Blocked by IP', ua);
-    return NextResponse.redirect('https://example.com/ip-blocked.html');
+    return NextResponse.redirect('https://www.google.com');
   }
 
   // 👮 Block suspicious User-Agent
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
-      return NextResponse.redirect('https://example.com/exit.html');
+      return NextResponse.redirect('https://www.google.com);
     }
   }
 
@@ -56,7 +56,7 @@ export async function middleware(req) {
       const geo = await geoRes.json();
       if (!ALLOWED_COUNTRIES.includes(geo.country_code)) {
         await logEvent(ip, `Geo Block: ${geo.country_code}`, ua);
-        return NextResponse.redirect('https://example.com/geo-blocked.html');
+        return NextResponse.redirect('https://www.google.com');
       }
     }
   } catch (err) {}
@@ -65,7 +65,7 @@ export async function middleware(req) {
   const count = rlCookie ? parseInt(rlCookie.value) : 0;
   if (count >= RATE_LIMIT_MAX) {
     await logEvent(ip, 'Rate Limit Exceeded', ua);
-    return NextResponse.redirect('https://example.com/rate-limit.html');
+    return NextResponse.redirect('https://www.google.com');
   }
 
   const res = NextResponse.next();

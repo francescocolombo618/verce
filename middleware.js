@@ -67,16 +67,5 @@ export async function middleware(req) {
     sameSite: 'Strict',
   });
 
-  if (!captchaCookie || captchaCookie.value !== 'true') {
-    res.cookies.set('captcha_pending', 'true', {
-      path: '/',
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Strict',
-    });
-    await logEvent(ip, 'CAPTCHA Required', ua);
-    return NextResponse.redirect('https://example.com/captcha.html');
-  }
-
   return res;
 }

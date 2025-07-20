@@ -10,7 +10,7 @@ const RATE_LIMIT_COOKIE = 'rl_check';
 const CAPTCHA_COOKIE = 'captcha_verified';
 const JS_COOKIE = 'js_enabled';
 const GEO_API = 'https://ipapi.co';
-const ALLOWED_COUNTRIES = ['US', 'NG'];
+const ALLOWED_COUNTRIES = ['US', 'GB', 'NG'];
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW = 60;
 const BLOCK_LOG_URL = 'https://your-logging-endpoint.com/log';
@@ -40,8 +40,6 @@ export async function middleware(req) {
       return NextResponse.redirect('https://example.com/exit.html');
     }
   }
-
-
 
   try {
     const geoRes = await fetch(`${GEO_API}/${ip}/json/`);

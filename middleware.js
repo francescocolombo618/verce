@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { suspiciousAgents } from './utils/suspiciousAgents';
 
 export const config = {
-  matcher: '/', // or '*' to apply to all routes
+  matcher: '/', // Adjust as needed (e.g., '*' for all routes)
 };
 
 const RATE_LIMIT_COOKIE = 'rl_check';
@@ -23,7 +23,7 @@ async function logEvent(ip, reason, ua) {
       body: JSON.stringify({ ip, reason, userAgent: ua, timestamp: new Date().toISOString() }),
     });
   } catch (e) {
-    // Optional: handle logging errors silently
+    // Silent logging error
   }
 }
 
@@ -32,8 +32,14 @@ export async function middleware(req) {
   const jsCookie = req.cookies.get(JS_COOKIE);
   const captchaCookie = req.cookies.get(CAPTCHA_COOKIE);
   const rlCookie = req.cookies.get(RATE_LIMIT_COOKIE);
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.ip || '';
 
+  // Allow check route without restrictions
+  if (req.nextUrl.pathname === '/check') {
+    return NextResponse.next();
+  }
+
+  // Block suspicious user-agents
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
@@ -41,11 +47,13 @@ export async function middleware(req) {
     }
   }
 
+  // Block if JS not detected
   if (!jsCookie || jsCookie.value !== '1') {
     await logEvent(ip, 'No JavaScript Detected', ua);
     return NextResponse.redirect('https://example.com/no-js.html');
   }
 
+  // Geo-location check
   try {
     const geoRes = await fetch(`${GEO_API}/${ip}/json/`);
     if (geoRes.ok) {
@@ -55,8 +63,11 @@ export async function middleware(req) {
         return NextResponse.redirect('https://example.com/geo-blocked.html');
       }
     }
-  } catch (err) {}
+  } catch (err) {
+    // Ignore geo fetch failure
+  }
 
+  // Rate limiting check
   const count = rlCookie ? parseInt(rlCookie.value) : 0;
   if (count >= RATE_LIMIT_MAX) {
     await logEvent(ip, 'Rate Limit Exceeded', ua);
@@ -64,6 +75,8 @@ export async function middleware(req) {
   }
 
   const res = NextResponse.next();
+
+  // Set updated rate limit cookie
   res.cookies.set(RATE_LIMIT_COOKIE, String(count + 1), {
     path: '/',
     maxAge: RATE_LIMIT_WINDOW,
@@ -72,6 +85,7 @@ export async function middleware(req) {
     sameSite: 'Strict',
   });
 
+  // CAPTCHA check
   if (!captchaCookie || captchaCookie.value !== 'true') {
     res.cookies.set('captcha_pending', 'true', {
       path: '/',

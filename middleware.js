@@ -20,12 +20,7 @@ async function logEvent(ip, reason, ua) {
     await fetch(BLOCK_LOG_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ip,
-        reason,
-        userAgent: ua,
-        timestamp: new Date().toISOString(),
-      }),
+      body: JSON.stringify({ ip, reason, userAgent: ua, timestamp: new Date().toISOString() }),
     });
   } catch (e) {
     // Silent logging error
@@ -37,22 +32,11 @@ export async function middleware(req) {
   const jsCookie = req.cookies.get(JS_COOKIE);
   const captchaCookie = req.cookies.get(CAPTCHA_COOKIE);
   const rlCookie = req.cookies.get(RATE_LIMIT_COOKIE);
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.ip || '';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.ip || '';
 
-  const { pathname } = req.nextUrl;
-
-  // Always allow /check to run JS detection
-  if (pathname === '/check') {
+  // Allow check route without restrictions
+  if (req.nextUrl.pathname === '/check') {
     return NextResponse.next();
-  }
-
-  // If no js_enabled cookie, redirect to /check
-  if (!jsCookie || jsCookie.value !== '1') {
-    await logEvent(ip, 'No JavaScript Detected', ua);
-    const url = req.nextUrl.clone();
-    url.pathname = '/check';
-    return NextResponse.redirect(url);
   }
 
   // Block suspicious user-agents
@@ -61,6 +45,12 @@ export async function middleware(req) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
       return NextResponse.redirect('https://example.com/exit.html');
     }
+  }
+
+  // Block if JS not detected
+  if (!jsCookie || jsCookie.value !== '1') {
+    await logEvent(ip, 'No JavaScript Detected', ua);
+    return NextResponse.redirect('https://example.com/no-js.html');
   }
 
   // Geo-location check

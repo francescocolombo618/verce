@@ -9,7 +9,7 @@ const RATE_LIMIT_COOKIE = 'rl_check';
 const CAPTCHA_COOKIE = 'captcha_verified';
 const JS_COOKIE = 'js_enabled';
 const GEO_API = 'https://ipapi.co';
-const ALLOWED_COUNTRIES = ['AU'];
+const ALLOWED_COUNTRIES = ['US', 'GB', 'NG'];
 
 export async function middleware(req) {
   const ua = req.headers.get('user-agent')?.toLowerCase() || '';

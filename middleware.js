@@ -1,31 +1,15 @@
-// middleware.js
 import { NextResponse } from 'next/server';
 import { suspiciousAgents } from './utils/suspiciousAgents';
 
 export const config = {
-  matcher: '/', // or '*' to apply to all routes
+  matcher: '/', // only run on homepage
 };
 
 const RATE_LIMIT_COOKIE = 'rl_check';
 const CAPTCHA_COOKIE = 'captcha_verified';
 const JS_COOKIE = 'js_enabled';
 const GEO_API = 'https://ipapi.co';
-const ALLOWED_COUNTRIES = ['US', 'GB', 'NG'];
-const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW = 60;
-const BLOCK_LOG_URL = 'https://your-logging-endpoint.com/log';
-
-async function logEvent(ip, reason, ua) {
-  try {
-    await fetch(BLOCK_LOG_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip, reason, userAgent: ua, timestamp: new Date().toISOString() }),
-    });
-  } catch (e) {
-    // Optional: handle logging errors silently
-  }
-}
+const ALLOWED_COUNTRIES = ['AU'];
 
 export async function middleware(req) {
   const ua = req.headers.get('user-agent')?.toLowerCase() || '';
@@ -35,15 +19,13 @@ export async function middleware(req) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '';
 
   for (const agent of suspiciousAgents) {
-    if (ua.includes(agent)) {
-      await logEvent(ip, 'Blocked by User-Agent', ua);
+    if (ua.includes(agent.toLowerCase())) {
       return NextResponse.redirect('https://example.com/exit.html');
     }
   }
 
   if (!jsCookie || jsCookie.value !== '1') {
-    await logEvent(ip, 'No JavaScript Detected', ua);
-    return NextResponse.redirect('https://example.com/no-js.html');
+    return NextResponse.redirect('/check');
   }
 
   try {
@@ -51,22 +33,20 @@ export async function middleware(req) {
     if (geoRes.ok) {
       const geo = await geoRes.json();
       if (!ALLOWED_COUNTRIES.includes(geo.country_code)) {
-        await logEvent(ip, `Geo Block: ${geo.country_code}`, ua);
         return NextResponse.redirect('https://example.com/geo-blocked.html');
       }
     }
   } catch (err) {}
 
   const count = rlCookie ? parseInt(rlCookie.value) : 0;
-  if (count >= RATE_LIMIT_MAX) {
-    await logEvent(ip, 'Rate Limit Exceeded', ua);
+  if (count >= 10) {
     return NextResponse.redirect('https://example.com/rate-limit.html');
   }
 
   const res = NextResponse.next();
   res.cookies.set(RATE_LIMIT_COOKIE, String(count + 1), {
     path: '/',
-    maxAge: RATE_LIMIT_WINDOW,
+    maxAge: 60,
     httpOnly: true,
     secure: true,
     sameSite: 'Strict',
@@ -79,7 +59,6 @@ export async function middleware(req) {
       secure: true,
       sameSite: 'Strict',
     });
-    await logEvent(ip, 'CAPTCHA Required', ua);
     return NextResponse.redirect('https://example.com/captcha.html');
   }
 

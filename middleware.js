@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { suspiciousAgents } from './utils/suspiciousAgents';
 
 export const config = {
-  matcher: '/', // or '*' to apply to all routes
+  matcher: '/',
 };
 
 const RATE_LIMIT_COOKIE = 'rl_check';
@@ -33,6 +33,10 @@ export async function middleware(req) {
   const captchaCookie = req.cookies.get(CAPTCHA_COOKIE);
   const rlCookie = req.cookies.get(RATE_LIMIT_COOKIE);
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '';
+
+  if (req.nextUrl.pathname === '/captcha') {
+    return NextResponse.next();
+  }
 
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
@@ -75,7 +79,7 @@ export async function middleware(req) {
       sameSite: 'Strict',
     });
     await logEvent(ip, 'CAPTCHA Required', ua);
-    return NextResponse.redirect('https://example.com/captcha.html');
+    return NextResponse.redirect('/captcha');
   }
 
   return res;

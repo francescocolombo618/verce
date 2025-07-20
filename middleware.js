@@ -3,27 +3,34 @@ import { NextResponse } from 'next/server';
 import { suspiciousAgents } from './utils/suspiciousAgents';
 
 export const config = {
-  matcher: '/', // or '*' to apply to all routes
+  matcher: '/', // only apply to homepage (not /check)
 };
 
 const RATE_LIMIT_COOKIE = 'rl_check';
 const CAPTCHA_COOKIE = 'captcha_verified';
 const JS_COOKIE = 'js_enabled';
-const GEO_API = 'https://ipapi.co';
 const ALLOWED_COUNTRIES = ['US', 'NG'];
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW = 60;
-const BLOCK_LOG_URL = 'https://your-logging-endpoint.com/log';
+
+// Optional: Logging endpoint (disabled by default)
+const BLOCK_LOG_URL = ''; // leave empty or add your endpoint
 
 async function logEvent(ip, reason, ua) {
+  if (!BLOCK_LOG_URL) return;
   try {
     await fetch(BLOCK_LOG_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip, reason, userAgent: ua, timestamp: new Date().toISOString() }),
+      body: JSON.stringify({
+        ip,
+        reason,
+        userAgent: ua,
+        timestamp: new Date().toISOString(),
+      }),
     });
   } catch (e) {
-    // Optional: handle logging errors silently
+    // silently fail
   }
 }
 
@@ -32,8 +39,15 @@ export async function middleware(req) {
   const jsCookie = req.cookies.get(JS_COOKIE);
   const captchaCookie = req.cookies.get(CAPTCHA_COOKIE);
   const rlCookie = req.cookies.get(RATE_LIMIT_COOKIE);
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '';
+  const country = req.geo?.country || '';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '';
 
+  // Allow JS check route through
+  if (req.nextUrl.pathname === '/check') {
+    return NextResponse.next();
+  }
+
+  // 1. Bot detection
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
@@ -41,22 +55,18 @@ export async function middleware(req) {
     }
   }
 
+  // 2. JavaScript detection
   if (!jsCookie || jsCookie.value !== '1') {
-    await logEvent(ip, 'No JavaScript Detected', ua);
-    return NextResponse.redirect('https://example.com/no-js.html');
+    return NextResponse.redirect('/check');
   }
 
-  try {
-    const geoRes = await fetch(`${GEO_API}/${ip}/json/`);
-    if (geoRes.ok) {
-      const geo = await geoRes.json();
-      if (!ALLOWED_COUNTRIES.includes(geo.country_code)) {
-        await logEvent(ip, `Geo Block: ${geo.country_code}`, ua);
-        return NextResponse.redirect('https://example.com/geo-blocked.html');
-      }
-    }
-  } catch (err) {}
+  // 3. Geo block
+  if (country && !ALLOWED_COUNTRIES.includes(country)) {
+    await logEvent(ip, `Geo Block: ${country}`, ua);
+    return NextResponse.redirect('https://example.com/geo-blocked.html');
+  }
 
+  // 4. Rate limiting
   const count = rlCookie ? parseInt(rlCookie.value) : 0;
   if (count >= RATE_LIMIT_MAX) {
     await logEvent(ip, 'Rate Limit Exceeded', ua);
@@ -72,6 +82,7 @@ export async function middleware(req) {
     sameSite: 'Strict',
   });
 
+  // 5. CAPTCHA enforcement
   if (!captchaCookie || captchaCookie.value !== 'true') {
     res.cookies.set('captcha_pending', 'true', {
       path: '/',

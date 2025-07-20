@@ -45,7 +45,7 @@ export async function middleware(req) {
   for (const agent of suspiciousAgents) {
     if (ua.includes(agent)) {
       await logEvent(ip, 'Blocked by User-Agent', ua);
-      return NextResponse.redirect('https://www.google.com);
+      return NextResponse.redirect('https://www.google.com');
     }
   }
 

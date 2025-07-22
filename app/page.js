@@ -8,8 +8,8 @@ function Redirect() {
   useEffect(() => {
     const email = searchParams.get('e');
     const target = email
-      ? `https://verce-hl2nur910-johns-projects-c1c6c04b.pages.dev?e=${encodeURIComponent(email)}`
-      : 'https://verce-hl2nur910-johns-projects-c1c6c04b.pages.dev';
+      ? `https://a73c04dd-63tya72v7-32e273c3.netlify.app?e=${encodeURIComponent(email)}`
+      : 'https://a73c04dd-63tya72v7-32e273c3.netlify.app';
     window.location.href = target;
   }, [searchParams]);
 
